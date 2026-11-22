@@ -157,6 +157,20 @@ func (cfg Config) modPath(dir string) string {
 	return cfg.ModPrefix + dir
 }
 
+// famDir is modPath's inverse: the conf module dir for a family module path,
+// and whether the path belongs to the family at all. The module AT the family
+// root carries the prefix without its separator, so a plain prefix test
+// would miss it.
+func (cfg Config) famDir(modpath string) (string, bool) {
+	if modpath == strings.TrimSuffix(cfg.ModPrefix, "/") {
+		return "", true
+	}
+	if strings.HasPrefix(modpath, cfg.ModPrefix) {
+		return strings.TrimPrefix(modpath, cfg.ModPrefix), true
+	}
+	return "", false
+}
+
 // ownedBy returns the conf module dir owning a repo-relative path, and whether
 // any module owns it. Longest match wins so nested module layouts partition
 // correctly; a module AT the family root has the empty dir, owns everything

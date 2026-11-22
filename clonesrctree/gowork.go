@@ -182,9 +182,15 @@ func generateGoWork(cfg Config, tm treeMap, plan goworkPlan, srcMods []string, k
 		if rerr != nil {
 			return nil, "", fmt.Errorf("gowork use %s: %v", tgtModRel, rerr)
 		}
-		uses = append(uses, "./"+filepath.ToSlash(rel))
-		if cfg.ImportPrefix != "" && cfg.Version != "" && consumed[cfg.ImportPrefix+tgtModRel] {
-			bridges = append(bridges, cfg.ImportPrefix+tgtModRel+" "+cfg.Version+" => ./"+filepath.ToSlash(rel))
+		use := "./" + filepath.ToSlash(rel)
+		if rel == "." {
+			use = "."
+		}
+		uses = append(uses, use)
+		if cfg.ImportPrefix != "" && cfg.Version != "" {
+			if mp := cfg.modPathAt(tgtModRel); consumed[mp] {
+				bridges = append(bridges, mp+" "+cfg.Version+" => "+use)
+			}
 		}
 	}
 	sort.Strings(uses)

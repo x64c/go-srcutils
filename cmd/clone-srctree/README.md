@@ -116,6 +116,9 @@ mirrors a whole multi-module tree into a monorepo root.
 - Importmap values become **prefix-relative** (mapped path = `importprefix` + value) and
   **double as each module's target directory** under `to` — the `base → gw` rename is the
   mapping itself, no dir table.
+- The value `"."` places a module **at the target root**: its mapped path is `importprefix`
+  without the trailing `/` (the rule Go applies to a module at a repository's root), and the
+  other mapped modules nest under it as subdirectories (`"g": "."` → `github.com/bar/foo`).
 - Every discovered module must be mapped or listed in `exclude` (`from`-relative dirs,
   must exist) — a module mapping outside the prefix cannot derive a target dir and errors.
 - The clone domain is the union of module subtrees: source files outside them are not

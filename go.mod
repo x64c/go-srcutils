@@ -1,5 +1,5 @@
 module github.com/x64c/go-srcutils
 
-go 1.27.1
+go 1.27.4
 
-require golang.org/x/mod v0.41.0
+require golang.org/x/mod v0.43.0

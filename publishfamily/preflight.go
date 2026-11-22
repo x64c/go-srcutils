@@ -88,10 +88,11 @@ func Preflight(cfg Config, assertVersion string) (Plan, error) {
 		}
 		famReqs := map[string]string{} // dep dir -> required version
 		for _, r := range mf.Require {
-			if !strings.HasPrefix(r.Mod.Path, cfg.ModPrefix) {
+			d, ok := cfg.famDir(r.Mod.Path)
+			if !ok {
 				continue
 			}
-			famReqs[strings.TrimPrefix(r.Mod.Path, cfg.ModPrefix)] = r.Mod.Version
+			famReqs[d] = r.Mod.Version
 		}
 		// instruction vs reality, both directions
 		for _, d := range cfg.Modules[dir] {

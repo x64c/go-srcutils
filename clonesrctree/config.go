@@ -198,13 +198,29 @@ func LoadConf(path string, cfg *Config) error {
 				if strings.HasPrefix(v, cfg.ImportPrefix) {
 					return fmt.Errorf("%s: importmap[%q]: value %q already carries the importprefix", path, k, v)
 				}
-				cfg.ImportMap[k] = importEntry{To: cfg.ImportPrefix + v, Dir: v, Replace: e.Replace}
+				to := cfg.ImportPrefix + v
+				if v == "." { // the module AT the target root: its path is the prefix without the separator
+					to = strings.TrimSuffix(cfg.ImportPrefix, "/")
+				}
+				cfg.ImportMap[k] = importEntry{To: to, Dir: v, Replace: e.Replace}
 			} else {
 				cfg.ImportMap[k] = importEntry{To: e.To, Replace: e.Replace}
 			}
 		}
 	}
 	return nil
+}
+
+// modPathAt returns the module path mapped to the target-relative module dir
+// rel (prefixed mode). Never prefix+dir by concatenation: a module at the
+// target root has dir "." and the bare prefix as its path.
+func (c *Config) modPathAt(rel string) string {
+	for _, e := range c.ImportMap {
+		if e.Dir == rel {
+			return e.To
+		}
+	}
+	return c.ImportPrefix + rel
 }
 
 // keepPatterns returns the target-side protection patterns (only what -keep supplies).
