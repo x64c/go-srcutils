@@ -18,8 +18,8 @@ func main() {
 		stderr("Sorts Go import declarations: two groups (stdlib, others), alphabetical within each.\n")
 		stderr("Single import uses no parentheses. Multiple import blocks are merged into one.\n\n")
 		stderr("Stdlib detection uses `go list std` which inherits your environment.\n")
-		stderr("For experimental packages (e.g. encoding/json/v2), set GOEXPERIMENT accordingly.\n")
-		stderr("Example: GOEXPERIMENT=jsonv2 %s ./src\n", os.Args[0])
+		stderr("For experimental packages (e.g. simd), set GOEXPERIMENT accordingly.\n")
+		stderr("Example: GOEXPERIMENT=simd %s ./src\n", os.Args[0])
 		os.Exit(1)
 	}
 

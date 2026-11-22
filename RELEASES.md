@@ -1,5 +1,11 @@
 # Release notes
 
+## v0.8.2 (2026-11-22)
+
+Text only, no change in behavior.
+
+- `sort-imports`: the help text (shown when run without arguments) and a code comment now use `GOEXPERIMENT=simd` as the example of an experimental package, instead of `encoding/json/v2` / `GOEXPERIMENT=jsonv2`. `encoding/json/v2` has been part of the standard library since Go 1.27 and needs no `GOEXPERIMENT`.
+
 ## v0.8.1 (2026-11-22)
 
 One bug fix in `sort-imports`. The bug was also in v0.6.0, v0.7.0 and v0.8.0.
