@@ -31,4 +31,11 @@ GOEXPERIMENT=simd sort-imports ./src
 ## Precautions
 
 - Standalone comment lines between import declarations are removed.
-- Inline comments (e.g. `"foo" // bar`) are preserved.
+- Inline comments (e.g. `"foo" // bar`) are preserved, and so is a comment after the `(` of
+  the first import block and after the `)` of the last.
+- Imports are found with Go's own parser and moved as whole lines, so the import section
+  must be laid out the way `gofmt` leaves it: `import`, `(`, `)` and every import on a line
+  of their own. A file laid out otherwise (two of them sharing a line, code on an import's
+  line, a comment after an import that runs on to the next line), or one whose package
+  clause or imports do not parse, is reported and left untouched (exit status 1). It is
+  never rewritten with something dropped.

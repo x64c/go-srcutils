@@ -24,11 +24,14 @@ Run order (real run):
 1. **delete** target files with no counterpart in source (`-keep` protected), then prune emptied dirs
 2. **copy** every source file into target, overwriting, except source `-skip`s and target `-keep`s
    (raw `go.mod`/`go.sum` are excluded when generation applies)
-3. **rewrite** derived importmap replacements in target `.go` files
-4. **verify** no `"K/` or `"K"` residue remains in **any** target `.go` file (incl. keep-protected)
+3. **rewrite** the import paths under an importmap key in target `.go` files (import declarations only)
+4. **verify** no import path under a key remains in **any** target `.go` file (incl. keep-protected)
 5. **generate** each non-kept `go.mod` from source (parsed via `modfile`), resolve pins; `go mod tidy` per module only on `buildtest=module` runs
 6. **sort-imports** on the target (always runs)
 7. **build** check per `-build`
+
+Before step 1, a real run reads the import declarations of every source `.go` file it will
+rewrite. A file that does not parse that far stops the run there, with nothing changed.
 
 ## Flags
 
@@ -173,7 +176,11 @@ the source has none:
 
 For each key `K` → `to` `T`:
 
-- **`.go` rewrites:** `"K/` → `"T/` and exact `"K"` → `"T"` (longest key first).
+- **`.go` rewrites:** an import of `K` becomes an import of `T`, and an import of a package
+  under `K/` one under `T/` (longest key first). Only import declarations are read, with
+  Go's own parser: the same text in a string literal, a struct tag or a comment is not an
+  import and is left alone. So a `.go` file must parse up to the end of its imports; one
+  that does not is an error (see the run order above), not a file copied unrewritten.
 - **`go.mod` generation** (per non-kept `go.mod`): module line mapped if its path is a key;
   direct requires whose path is a key rewritten to `T`+`version` (others copied verbatim);
   `// indirect` requires dropped (tidy recomputes); replaces targeting a mapped module

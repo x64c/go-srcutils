@@ -1,7 +1,6 @@
 package sortimports
 
 import (
-	"bufio"
 	"fmt"
 	"os"
 	"path/filepath"
@@ -11,6 +10,10 @@ import (
 // ProcSrcFile reads a Go source file, sorts its imports,
 // and atomically replaces the file only if imports changed.
 // Returns true if the file was modified.
+//
+// A file it cannot sort safely is an error and is left untouched: one whose
+// package clause or imports do not parse, or whose import layout cannot be
+// carried line by line (see parseSrcImports).
 func ProcSrcFile(path string) (bool, error) {
 	data, err := os.ReadFile(path)
 	if err != nil {
@@ -18,17 +21,45 @@ func ProcSrcFile(path string) (bool, error) {
 	}
 
 	lines := strings.Split(string(data), "\n")
-	r := parseSrcImports(lines)
-	if !r.hasImports() {
-		return false, nil
+	r, err := parseSrcImports(data, lines)
+	if err != nil {
+		return false, err
+	}
+	if !r.hasImports() || r.groups.total() == 0 {
+		return false, nil // no imports, or only an empty import (): nothing to sort
 	}
 
-	formatted := r.groups.formatLines()
+	formatted := r.groups.formatLines(r.openTail, r.closeTail)
+	if strings.HasSuffix(lines[r.startLine], "\r") {
+		// CRLF file: lines were split on "\n", so each still ends in "\r"
+		for i := range formatted {
+			formatted[i] += "\r"
+		}
+	}
 
 	// Check if imports are already sorted
 	oldImportLines := lines[r.startLine:r.endLine]
 	if linesEqual(oldImportLines, formatted) {
 		return false, nil
+	}
+
+	// The new content: the import range replaced, every other line as it was.
+	newLines := make([]string, 0, len(lines)-len(oldImportLines)+len(formatted))
+	newLines = append(newLines, lines[:r.startLine]...)
+	newLines = append(newLines, formatted...)
+	newLines = append(newLines, lines[r.endLine:]...)
+	out := strings.Join(newLines, "\n")
+
+	// Last line of defense. Sorting moves import lines; it never adds, removes
+	// or changes an import. So the result must declare the same package and
+	// import exactly the same packages under the same names. If it would not,
+	// whatever the reason, nothing is written.
+	got, err := sourceIdentity([]byte(out))
+	if err != nil {
+		return false, fmt.Errorf("refusing to write: the sorted file would not parse (%v); file left unchanged", err)
+	}
+	if !linesEqual(got, r.identity) {
+		return false, fmt.Errorf("refusing to write: the sorted file would not import the same packages; file left unchanged")
 	}
 
 	// Write to temp file in the same directory (for atomic rename)
@@ -43,50 +74,9 @@ func ProcSrcFile(path string) (bool, error) {
 		_ = os.Remove(tmpPath)
 	}()
 
-	w := bufio.NewWriter(tmp)
-	writeLine := func(s string) error {
-		if _, err := w.WriteString(s); err != nil {
-			return err
-		}
-		return w.WriteByte('\n')
-	}
-	writeLineNoNewline := func(s string) error {
-		_, err := w.WriteString(s)
-		return err
-	}
-
-	// Write lines before imports
-	for i := 0; i < r.startLine; i++ {
-		if err := writeLine(lines[i]); err != nil {
-			_ = tmp.Close()
-			return false, fmt.Errorf("write: %w", err)
-		}
-	}
-
-	// Write sorted imports
-	for _, line := range formatted {
-		if err := writeLine(line); err != nil {
-			_ = tmp.Close()
-			return false, fmt.Errorf("write: %w", err)
-		}
-	}
-
-	// Write lines after imports
-	for i := r.endLine; i < len(lines); i++ {
-		if i < len(lines)-1 {
-			err = writeLine(lines[i])
-		} else {
-			err = writeLineNoNewline(lines[i])
-		}
-		if err != nil {
-			_ = tmp.Close()
-			return false, fmt.Errorf("write: %w", err)
-		}
-	}
-
-	if err := w.Flush(); err != nil {
+	if _, err := tmp.WriteString(out); err != nil {
 		_ = tmp.Close()
-		return false, fmt.Errorf("flush: %w", err)
+		return false, fmt.Errorf("write: %w", err)
 	}
 	if err := tmp.Close(); err != nil {
 		return false, fmt.Errorf("close temp: %w", err)

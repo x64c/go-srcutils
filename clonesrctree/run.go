@@ -49,6 +49,18 @@ func sync(cfg Config) error {
 		return err
 	}
 
+	// 0b. preflight (real runs): the rewrite reads each file's import
+	// declarations, so a source .go file that does not parse that far cannot be
+	// rewritten. Find it now, before anything is touched, not in step 3 with the
+	// target already deleted-into, copied and half rewritten. (A dry run meets
+	// the same error in its step 3 scan.)
+	if !cfg.Dry {
+		var scan result
+		if err := planRewrites(cfg.From, keeps, skips, tm, pairs, &scan); err != nil {
+			return fmt.Errorf("%v (nothing was changed)", err)
+		}
+	}
+
 	var res result
 
 	// 1. delete stale, then prune emptied dirs
