@@ -30,6 +30,9 @@ GOEXPERIMENT=simd sort-imports ./src
 
 ## Precautions
 
+- A file that imports `"C"` (cgo) is left exactly as it is. There, the comment above
+  `import "C"` is C code, and it only counts while that import stands on its own, so
+  merging the imports into one block would break the file.
 - Standalone comment lines between import declarations are removed.
 - Inline comments (e.g. `"foo" // bar`) are preserved, and so is a comment after the `(` of
   the first import block and after the `)` of the last.

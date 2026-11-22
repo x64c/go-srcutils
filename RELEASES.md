@@ -1,5 +1,34 @@
 # Release notes
 
+## v0.8.1 (2026-11-22)
+
+One bug fix in `sort-imports`. The bug was also in v0.6.0, v0.7.0 and v0.8.0.
+
+### sort-imports: cgo files were broken
+
+**The bug.** In a file that calls C code, the comment directly above `import "C"` is not a comment. It is C code (the preamble), and it only counts while it is attached to that import. `sort-imports` merged `import "C"` into one block with the other imports and removed comment-only lines from the import section. So after sorting, a cgo file no longer built:
+
+```go
+/*                                        /*
+static int answer(void) { return 42; }    static int answer(void) { return 42; }
+*/                                        */
+import "C"                          →     import (
+                                          	"fmt"
+import "fmt"
+                                          	"C"
+                                          )
+```
+
+When the C code sat between two imports, or inside an import block, it was removed from the file. The exit status was 0 in every case.
+
+**The fix.** A file that imports `"C"` is left exactly as it is.
+
+**Behavior change**
+
+- **cgo files are no longer sorted.** `sort-imports` skips them without a message. Through `clone-srctree`, a cgo file is still cloned and its imports are still rewritten; only the sorting step leaves it alone.
+
+Nothing else changes: every other file is handled as in v0.8.0.
+
 ## v0.8.0 (2026-11-22)
 
 Two bug fixes, in `clone-srctree` and `sort-imports`. Both bugs were also in v0.6.0 and v0.7.0.
@@ -56,9 +85,9 @@ F string `json:"base"`     // also rewritten: `json:"example.com/p/base"`
 
 Unchanged: comment-only lines between import declarations, and inside an import block, are still removed.
 
-### Known issue: sort-imports and cgo
+### Known issue: sort-imports and cgo (fixed in v0.8.1)
 
-`sort-imports` must not be run on files that import `"C"`. It merges `import "C"` into the import block, which detaches the C code in the comment above it, and the file no longer builds. If that comment sits between two imports, it is removed from the file. This is not new in v0.8.0 (v0.6.0 and v0.7.0 do the same), and it is not fixed in this release.
+`sort-imports` v0.8.0 must not be run on files that import `"C"`. It merges `import "C"` into the import block, which detaches the C code in the comment above it, and the file no longer builds. If that comment sits between two imports, it is removed from the file. This is not new in v0.8.0 (v0.6.0 and v0.7.0 do the same), and it is not fixed in this release.
 
 ### Install
 

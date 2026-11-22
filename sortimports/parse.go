@@ -55,6 +55,9 @@ func parseSrcImports(src []byte, lines []string) (parseResult, error) {
 	if err != nil {
 		return r, fmt.Errorf("parse imports: %w", err)
 	}
+	if importsC(f) {
+		return r, nil // cgo: no import range, so nothing is sorted (see importsC)
+	}
 	r.identity = importIdentity(f)
 	at := func(p token.Pos) token.Position { return fset.PositionFor(p, false) }
 	// before/after return the text of a line left of a position / from it on.
@@ -173,6 +176,21 @@ func lineTail(rest string) (string, error) {
 		}
 	}
 	return rest, nil
+}
+
+// importsC reports whether the file imports "C", i.e. is a cgo file. Such a
+// file is left exactly as it is. In cgo the comment directly above import "C"
+// is not a comment but C code (the preamble), and it only counts while that
+// import stands on its own. Sorting does the two things that break it: it
+// merges every import into one block, which detaches the preamble, and it
+// drops comments between import declarations, which can delete it.
+func importsC(f *ast.File) bool {
+	for _, spec := range f.Imports {
+		if path, err := strconv.Unquote(spec.Path.Value); err == nil && path == "C" {
+			return true
+		}
+	}
+	return false
 }
 
 // importIdentity is what sorting must never change: the package name and the

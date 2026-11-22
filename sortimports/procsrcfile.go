@@ -13,7 +13,8 @@ import (
 //
 // A file it cannot sort safely is an error and is left untouched: one whose
 // package clause or imports do not parse, or whose import layout cannot be
-// carried line by line (see parseSrcImports).
+// carried line by line (see parseSrcImports). A cgo file (one that imports
+// "C") is never sorted and is not an error (see importsC).
 func ProcSrcFile(path string) (bool, error) {
 	data, err := os.ReadFile(path)
 	if err != nil {
